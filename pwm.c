@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2022, Cypress Semiconductor Corporation (an Infineon company) or
+ * Copyright 2016-2024, Cypress Semiconductor Corporation (an Infineon company) or
  * an affiliate of Cypress Semiconductor Corporation.  All rights reserved.
  *
  * This software, including source code, documentation and related
@@ -191,11 +191,8 @@ void tones_fine_timeout(UINT32 arg)
 {
   //  ble_trace0("tones_fine_timeout()\n");
     bleapptimer_stopFineTimer();
-    if(button_value == gpio_getPinInput((TONES_LED2_GPIO) / 16, (TONES_LED2_GPIO) % 16))
-    {
-        tones_go_to_next_state();
-        tones_blink_led2();
-    }
+    tones_go_to_next_state();
+    tones_blink_led2();
 }
 
 // Three Interrupt inputs (Buttons) can be handled here.
@@ -217,16 +214,12 @@ void tones_button_interrupt_handler(UINT8 value)
         // needs a bit of delay or pwm does not update properly
         bleapptimer_startFineTimer(tones_fine_timeout, 8); // time tick is 12.5 ms or 80 calls/sec
     }
-    else
-    {
-        bleapptimer_stopFineTimer();
-    }
 }
 
 // Sets the state machine to the next state.
 void tones_go_to_next_state(void)
 {
-    ble_trace1("current state %d\n", tones_current_state );
+    ble_trace1("previous state %d\n", tones_current_state );
     tones_current_state++;
 
     if (tones_current_state > TONES_STATE_4)
@@ -239,5 +232,13 @@ void tones_blink_led2(void)
     pwm_start(PWM2, LHL_CLK, toggle_values[tones_current_state], 0);
 
     // Get init and toggle counts for LED and trace it.
-    ble_trace2("PWM init count: 0x%03X, Toggle Count: 0x%03X\n", pwm_getInitValue(PWM2), pwm_getToggleCount(PWM2));
+    // Everytime the button is pressed the state will be changed.
+    // The init state is TONES_STATE_0 and the toggle count is 0 (toggle_values[0]).
+    // First time button pressed : state changed to TONES_STATE_1, the toggle count is 50 (toggle_values[1]).
+    // Second time button pressed: state changed to TONES_STATE_2, the toggle count is 100 (toggle_values[2]);
+    // Third time button pressed : state changed to TONES_STATE_3, the toggle count is 400 (toggle_values[3]);
+    // Fourth time button pressed: state changed to TONES_STATE_4, the toggle count is 1000 (toggle_values[4]);
+    // Fifth time button pressed : state changed to TONES_STATE_0, the toggle count is 0, (toggle_values[0]);
+
+    ble_trace3("PWM init count: 0x%03X, Toggle Count: 0x%03X, current state: %d\n", pwm_getInitValue(PWM2), pwm_getToggleCount(PWM2), tones_current_state);
 }
